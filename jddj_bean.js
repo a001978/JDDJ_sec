@@ -16,7 +16,7 @@ cron "0 0 * * *" script-path=https://raw.githubusercontent.com/passerby-b/JDDJ/m
 
 */
 
- const $ = new API("jddj_bean");
+// const $ = new API("jddj_bean");
 // let cookies = [];
 // let thiscookie = '', deviceid = '';
 // !(async () => {
@@ -71,7 +71,7 @@ cron "0 0 * * *" script-path=https://raw.githubusercontent.com/passerby-b/JDDJ/m
 // })
 
 
-const $ = new Env('京东到家鲜豆任务脚本');
+const $ = new Env('jddj_bean');
 const notify = $.isNode() ? require('./sendNotify') : '';
 //Node.js用户请在jdCookie.js处填写京东ck;
 const jdCookieNode = $.isNode() ? require('./jdCookie.js') : '';
