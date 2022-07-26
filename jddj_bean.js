@@ -1,150 +1,76 @@
 /*
 京东到家鲜豆任务脚本,支持qx,loon,shadowrocket,surge,nodejs
-用抓包抓 https://daojia.jd.com/html/index.html 页面cookie填写到下面,暂时不知cookie有效期
-抓多账号直接清除浏览器缓存再登录新账号,千万别点退出登录,否则cookie失效
-cookie只要里面的deviceid_pdj_jd=xxx-xxx-xxx;o2o_m_h5_sid=xxx-xxx-xxx关键信息
-一天运行一次
+兼容京东jdCookie.js
+手机设备在boxjs里填写cookie
 boxjs订阅地址:https://gitee.com/passerby-b/javascript/raw/master/JD/passerby-b.boxjs.json
-TG群:https://t.me/joinchat/wH4Ks3mT6mxiMDg1
+TG群:https://t.me/passerbyb2021
 
 [task_local]
-0 0 * * * https://raw.githubusercontent.com/passerby-b/JDDJ/main/jddj_bean.js
+10 0 * * * https://raw.githubusercontent.com/passerby-b/JDDJ/main/jddj_bean.js
 
-================Loon==============
 [Script]
-cron "0 0 * * *" script-path=https://raw.githubusercontent.com/passerby-b/JDDJ/main/jddj_bean.js,tag=京东到家鲜豆任务
+cron "10 0 * * *" script-path=https://raw.githubusercontent.com/passerby-b/JDDJ/main/jddj_bean.js,tag=京东到家鲜豆任务
 
 */
 
-// const $ = new API("jddj_bean");
-// let cookies = [];
-// let thiscookie = '', deviceid = '';
-// !(async () => {
-//     if (cookies.length == 0) {
-//         if ($.env.isNode) { delete require.cache['./jddj_cookie.js']; cookies = require('./jddj_cookie.js') }
-//         else {
-//             let ckstr = $.read('#jddj_cookies');
-//             if (!!ckstr) {
-//                 if (ckstr.indexOf(',') < 0) {
-//                     cookies.push(ckstr);
-//                 } else {
-//                     cookies = ckstr.split(',');
-//                 }
-//             }
-//         }
-//     }
-//     if (cookies.length == 0) {
-//         console.log(`\r\n请先填写cookie`);
-//         return;
-//     }
-//     for (let i = 0; i < cookies.length; i++) {
-//         console.log(`\r\n★★★★★开始执行第${i + 1}个账号,共${cookies.length}个账号★★★★★`);
-//         thiscookie = cookies[i];
-//         if (!thiscookie.trim()) continue;
-
-//         var jsonlist = {};
-//         var params = thiscookie.split(';');
-//         params.forEach(item => {
-//             if (item.indexOf('=') > -1) {
-//                 jsonlist[item.split('=')[0].trim()] = item.split('=')[1].trim();
-//             }
-//         });
-//         deviceid = jsonlist.deviceid_pdj_jd;
-
-//         await userinfo();
-//         await $.wait(1000);
-
-//         let tslist = await taskList();
-//         if (tslist.code == 1) {
-//             $.notify('第' + (i + 1) + '个账号cookie过期', '请访问https://daojia.jd.com/html/index.html抓取cookie', { url: 'https://daojia.jd.com/html/index.html' });
-//             continue;
-//         }
-
-//         await runTask(tslist);
-
-//     }
-
-// })().catch((e) => {
-//     console.log('', `❌失败! 原因: ${e}!`, '');
-// }).finally(() => {
-//     $.done();
-// })
-
-
-const $ = new Env('jddj_bean');
-const notify = $.isNode() ? require('./sendNotify') : '';
-//Node.js用户请在jdCookie.js处填写京东ck;
-const jdCookieNode = $.isNode() ? require('./jdCookie.js') : '';
-let jdNotify = true;//是否关闭通知，false打开通知推送，true关闭通知推送
-//IOS等用户直接用NobyDa的jd cookie
-let cookiesArr = [], cookie = '', message;
-let helpAuthor = true
-if ($.isNode()) {
-  Object.keys(jdCookieNode).forEach((item) => {
-    cookiesArr.push(jdCookieNode[item])
-  })
-  if (process.env.JD_DEBUG && process.env.JD_DEBUG === 'false') console.log = () => {};
-} else {
-  let cookiesData = $.getdata('CookiesJD') || "[]";
-  cookiesData = jsonParse(cookiesData);
-  cookiesArr = cookiesData.map(item => item.cookie);
-  cookiesArr.reverse();
-  cookiesArr.push(...[$.getdata('CookieJD2'), $.getdata('CookieJD')]);
-  cookiesArr.reverse();
-  cookiesArr = cookiesArr.filter(item => item !== "" && item !== null && item !== undefined);
-}
-const JD_API_HOST = 'https://m.jingxi.com/';
+const $ = new API("jddj_bean");
+let ckPath = './jdCookie.js';//ck路径,环境变量:JDDJ_CKPATH
+let cookies = [];
+let thiscookie = '', deviceid = '';
 !(async () => {
-  if (!cookiesArr[0]) {
-    $.msg($.name, '【提示】请先获取京东账号一cookie\n直接使用NobyDa的京东签到获取', 'https://bean.m.jd.com/bean/signIndex.action', {"open-url": "https://bean.m.jd.com/bean/signIndex.action"});
-    return;
-  }
-  $.newShareCodes = []
-  // await getAuthorShareCode();
-  for (let i = 0; i < cookiesArr.length; i++) {
-    if (cookiesArr[i]) {
-      cookie = cookiesArr[i];
-      $.UserName = decodeURIComponent(cookie.match(/pt_pin=(.+?);/) && cookie.match(/pt_pin=(.+?);/)[1])
-      $.index = i + 1;
-      $.isLogin = true;
-      $.nickName = '';
-      message = '';
-      await TotalBean();
-      console.log(`\n******开始【京东账号${$.index}】${$.nickName || $.UserName}*********\n`);
-      if (!$.isLogin) {
-        $.msg($.name, `【提示】cookie已失效`, `京东账号${$.index} ${$.nickName || $.UserName}\n请重新登录获取\nhttps://bean.m.jd.com/bean/signIndex.action`, {"open-url": "https://bean.m.jd.com/bean/signIndex.action"});
-
-        if ($.isNode()) {
-          await notify.sendNotify(`${$.name}cookie已失效 - ${$.UserName}`, `京东账号${$.index} ${$.UserName}\n请重新登录获取cookie`);
+    if (cookies.length == 0) {
+        if ($.env.isNode) {
+            if (process.env.JDDJ_CKPATH) ckPath = process.env.JDDJ_CKPATH;
+            delete require.cache[ckPath];
+            let jdcookies = require(ckPath);
+            for (let key in jdcookies) if (!!jdcookies[key]) cookies.push(jdcookies[key]);
         }
-        continue
-      }
-      await jdCash()
+        else {
+            let ckstr = $.read('#jddj_cookies');
+            if (!!ckstr) {
+                if (ckstr.indexOf(',') < 0) {
+                    cookies.push(ckstr);
+                } else {
+                    cookies = ckstr.split(',');
+                }
+            }
+        }
     }
-  }
-})()
-    .catch((e) => {
-      $.log('', `❌ ${$.name}, 失败! 原因: ${e}!`, '')
-    })
-    .finally(() => {
-      $.done();
-    })
-async function jdCash() {
-  $.coins = 0
-  $.money = 0
-  await sign()
-  await getTaskList()
-  await doubleSign()
-  await showMsg()
-}
+    if (cookies.length == 0) {
+        console.log(`\r\n请先填写cookie`);
+        return;
+    }
+    for (let i = 0; i < cookies.length; i++) {
+        console.log(`\r\n★★★★★开始执行第${i + 1}个账号,共${cookies.length}个账号★★★★★`);
+        thiscookie = cookies[i];
+        if (!thiscookie.trim()) continue;
 
+        thiscookie = await taskLoginUrl(thiscookie);
 
+        await userinfo();
+        await $.wait(1000);
+
+        let tslist = await taskList();
+        if (tslist.code == 1) {
+            $.notify('第' + (i + 1) + '个账号cookie过期', '请访问\nhttps://bean.m.jd.com/bean/signIndex.action\n抓取cookie', { url: 'https://bean.m.jd.com/bean/signIndex.action' });
+            continue;
+        }
+
+        await runTask(tslist);
+
+    }
+
+})().catch((e) => {
+    console.log('', `❌失败! 原因: ${e}!`, '');
+}).finally(() => {
+    $.done();
+})
 
 //个人信息
 async function userinfo() {
     return new Promise(async resolve => {
         try {
-            let option = urlTask('https://daojia.jd.com/client?_jdrandom=' + Math.round(new Date())+'&platCode=H5&appName=paidaojia&channel=&appVersion=8.7.6&jdDevice=&functionId=mine%2FgetUserAccountInfo&body=%7B%22refPageSource%22:%22%22,%22fromSource%22:2,%22pageSource%22:%22myinfo%22,%22ref%22:%22%22,%22ctp%22:%22myinfo%22%7D&jda=&traceId=' + deviceid + Math.round(new Date()) + '&deviceToken=' + deviceid + '&deviceId=' + deviceid + '', '')
+            let option = urlTask('https://daojia.jd.com/client?_jdrandom=' + Math.round(new Date()) + '&platCode=H5&appName=paidaojia&channel=&appVersion=8.7.6&jdDevice=&functionId=mine%2FgetUserAccountInfo&body=%7B%22refPageSource%22:%22%22,%22fromSource%22:2,%22pageSource%22:%22myinfo%22,%22ref%22:%22%22,%22ctp%22:%22myinfo%22%7D&jda=&traceId=' + deviceid + Math.round(new Date()) + '&deviceToken=' + deviceid + '&deviceId=' + deviceid + '', '')
 
             $.http.get(option).then(response => {
                 let data = JSON.parse(response.body);
@@ -221,7 +147,7 @@ async function runTask(tslist) {
                 })
 
                 //领取奖励
-                option = urlTask('https://daojia.jd.com/client?_jdrandom=' + Math.round(new Date()) + '&functionId=task%2FsendPrize&isNeedDealError=true&body=%7B%22modelId%22%3A%22' + item.modelId + '%22%2C%22taskId%22%3A%22' + encodeURIComponent(item.taskId) + '%22%2C%22taskType%22%3A' + item.taskType + '%2C%22plateCode%22%3A1%7D&channel=ios&platform=6.6.0&platCode=h5&appVersion=6.6.0&appName=paidaojia&deviceModel=appmodel&traceId=' + deviceid + Math.round(new Date()) + '&deviceToken=' + deviceid + '&deviceId=' + deviceid , ``);
+                option = urlTask('https://daojia.jd.com/client?_jdrandom=' + Math.round(new Date()) + '&functionId=task%2FsendPrize&isNeedDealError=true&body=%7B%22modelId%22%3A%22' + item.modelId + '%22%2C%22taskId%22%3A%22' + encodeURIComponent(item.taskId) + '%22%2C%22taskType%22%3A' + item.taskType + '%2C%22plateCode%22%3A1%7D&channel=ios&platform=6.6.0&platCode=h5&appVersion=6.6.0&appName=paidaojia&deviceModel=appmodel&traceId=' + deviceid + Math.round(new Date()) + '&deviceToken=' + deviceid + '&deviceId=' + deviceid, ``);
                 await $.http.get(option).then(response => {
                     var data = JSON.parse(response.body), msg = '';
                     if (data.code == 0) {
@@ -258,6 +184,59 @@ function urlTask(url, body) {
         body: body
     };
     return option;
+}
+
+//根据京东ck获取到家ck
+async function taskLoginUrl(thiscookie) {
+    return new Promise(async resolve => {
+        try {
+            if (thiscookie.indexOf('deviceid_pdj_jd') > -1) {
+                let arr = thiscookie.split(';');
+                for (const o of arr) {
+                    if (o.indexOf('deviceid_pdj_jd') > -1) {
+                        deviceid = o.split('=')[1];
+                    }
+                }
+                resolve(thiscookie);
+            }
+            else {
+                deviceid = _uuid();
+                let option = {
+                    url: encodeURI('https://daojia.jd.com/client?_jdrandom=' + (+new Date()) + '&_funid_=login/treasure&functionId=login/treasure&body={}&lat=&lng=&lat_pos=&lng_pos=&city_id=&channel=h5&platform=6.6.0&platCode=h5&appVersion=6.6.0&appName=paidaojia&deviceModel=appmodel&isNeedDealError=false&traceId=' + deviceid + '&deviceToken=' + deviceid + '&deviceId=' + deviceid + '&_jdrandom=' + (+new Date()) + '&_funid_=login/treasure'),
+                    headers: {
+                        "Cookie": 'deviceid_pdj_jd=' + deviceid + ';' + thiscookie + ';',
+                        "Host": "daojia.jd.com",
+                        'Content-Type': 'application/x-www-form-urlencoded;',
+                        "User-Agent": 'jdapp;iPhone;10.0.10;14.1;' + deviceid + ';network/wifi;model/iPhone11,6;appBuild/167764;jdSupportDarkMode/0;Mozilla/5.0 (iPhone; CPU iPhone OS 14_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1'
+                    }
+                };
+                let ckstr = '';
+                await $.http.get(option).then(async response => {
+                    //console.log(response);
+                    if (response.body.indexOf('请求成功') > -1) {
+                        for (const key in response.headers) {
+                            if (key.toLowerCase().indexOf('cookie') > -1) {
+                                ckstr = response.headers[key].toString();
+                            }
+                        }
+                        ckstr += ';deviceid_pdj_jd=' + deviceid;
+                    }
+                });
+                resolve(ckstr);
+            }
+
+        } catch (error) {
+            console.log(error);
+            resolve('');
+        }
+    })
+}
+
+function _uuid() {
+    function s4() {
+        return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+    }
+    return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
 }
 
 /*********************************** API *************************************/
