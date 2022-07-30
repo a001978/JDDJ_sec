@@ -16,16 +16,16 @@ cron "10 0 * * *" script-path=https://raw.githubusercontent.com/passerby-b/JDDJ/
 */
 
 const $ = new API("jddj_bean");
-let ckPath = './jdCookie.js';//ck路径,环境变量:JDDJ_CKPATH
+let ckPath = './jddj_cookie.js';//ck路径,环境变量:JDDJ_CKPATH
 let cookies = [];
 let thiscookie = '', deviceid = '';
-!(async () => {
+
+/*
+
     if (cookies.length == 0) {
         if ($.env.isNode) {
             if (process.env.JDDJ_CKPATH) ckPath = process.env.JDDJ_CKPATH;
-            delete require.cache[ckPath];
-            let jdcookies = require(ckPath);
-            for (let key in jdcookies) cookies.push(jdcookies[key]);
+            delete require.cache[ckPath]; cookies = require(ckPath);
         }
         else {
             let ckstr = $.read('#jddj_cookies');
@@ -42,28 +42,41 @@ let thiscookie = '', deviceid = '';
         console.log(`\r\n请先填写cookie`);
         return;
     }
+*/    
+
+!(async () => {
+      if (process.env.JDDJ_CKPATH && process.env.JDDJ_CKPATH.indexOf(',') > -1) {
+   cookies = process.env.JDDJ_CKPATH.split(',');
+   console.log(`您选择的是用,隔开\n`)
+  } else {
+   cookies = process.env.JDDJ_CKPATH.split()
+  };
+  
+    console.log(`============ 脚本执行-国际标准时间(UTC)：${new Date().toLocaleString()}  =============\n`)
+    console.log(`============ 脚本执行-北京时间(UTC+8)：${new Date(new Date().getTime() + 8 * 60 * 60 * 1000).toLocaleString()}  =============\n`)
+    
+    
+    
     for (let i = 0; i < cookies.length; i++) {
         console.log(`\r\n★★★★★开始执行第${i + 1}个账号,共${cookies.length}个账号★★★★★`);
         thiscookie = cookies[i];
         if (!thiscookie.trim()) continue;
 
-        deviceid = _uuid();
-        let option = taskLoginUrl(deviceid, thiscookie);
-        await $.http.get(option).then(response => {
-            let data = JSON.parse(response.body);
-            if (data.code == 0) {
-                thiscookie = 'deviceid_pdj_jd=' + deviceid + '; PDJ_H5_PIN=' + data.result.PDJ_H5_PIN + '; o2o_m_h5_sid=' + data.result.o2o_m_h5_sid + ';';
-                //sid = data.result.o2o_m_h5_sid;
+        var jsonlist = {};
+        var params = thiscookie.split(';');
+        params.forEach(item => {
+            if (item.indexOf('=') > -1) {
+                jsonlist[item.split('=')[0].trim()] = item.split('=')[1].trim();
             }
-            else thiscookie = 'aabbcc';
         });
+        deviceid = jsonlist.deviceid_pdj_jd;
 
         await userinfo();
         await $.wait(1000);
 
         let tslist = await taskList();
         if (tslist.code == 1) {
-            $.notify('第' + (i + 1) + '个账号cookie过期', '请访问\nhttps://bean.m.jd.com/bean/signIndex.action抓取cookie', { url: 'https://bean.m.jd.com/bean/signIndex.action' });
+            $.notify('第' + (i + 1) + '个账号cookie过期', '请访问https://daojia.jd.com/html/index.html抓取cookie', { url: 'https://daojia.jd.com/html/index.html' });
             continue;
         }
 
@@ -195,26 +208,6 @@ function urlTask(url, body) {
         body: body
     };
     return option;
-}
-
-function taskLoginUrl(deviceid, thiscookie) {
-    return {
-        url: 'https://daojia.jd.com/client?_jdRandom=' + (+new Date()) + '&functionId=xapp/loginByPtKeyNew&body=' + escape(JSON.stringify({ "fromSource": 5, "businessChannel": 150, "subChannel": "", "regChannel": "" })) + 'channel=ios&platform=6.6.0&platCode=h5&appVersion=6.6.0&appName=paidaojia&deviceModel=appmodel&code=011UYn000apwmL1nWB000aGiv74UYn03&deviceId=' + deviceid + '&deviceToken=' + deviceid + '&deviceModel=appmodel',
-        headers: {
-            "Cookie": 'deviceid_pdj_jd=' + deviceid + ';' + thiscookie + ';',
-            "Host": "daojia.jd.com",
-            "referer": "https://daojia.jd.com/taroh5/h5dist/",
-            'Content-Type': 'application/x-www-form-urlencoded',
-            "User-Agent": 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)'
-        }
-    }
-}
-
-function _uuid() {
-    function s4() {
-        return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-    }
-    return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
 }
 
 /*********************************** API *************************************/
