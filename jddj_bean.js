@@ -6,11 +6,15 @@ cookie只要里面的deviceid_pdj_jd=xxx-xxx-xxx;o2o_m_h5_sid=xxx-xxx-xxx关键�
 一天运行一次
 boxjs订阅地址:https://gitee.com/passerby-b/javascript/raw/master/JD/passerby-b.boxjs.json
 TG群:https://t.me/passerbyb2021
+
 [task_local]
 10 0 * * * https://raw.githubusercontent.com/passerby-b/JDDJ/main/jddj_bean.js
+
 [Script]
 cron "10 0 * * *" script-path=https://raw.githubusercontent.com/passerby-b/JDDJ/main/jddj_bean.js,tag=京东到家鲜豆任务
+
 */
+
 const $ = new API("jddj_bean");
 let ckPath = './jdCookie.js';//ck路径,环境变量:JDDJ_CKPATH
 let cookies = [];
